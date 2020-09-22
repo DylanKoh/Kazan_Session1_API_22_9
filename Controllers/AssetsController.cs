@@ -49,9 +49,20 @@ namespace Kazan_Session1_API_22_9.Controllers
         {
             if (ModelState.IsValid)
             {
-                db.Assets.Add(asset);
-                db.SaveChanges();
-                return Json("Successfully created Asset!");
+                var findAssetName = (from x in db.Assets
+                                     where x.AssetName == asset.AssetName && x.DepartmentLocationID == asset.DepartmentLocationID
+                                     select x).FirstOrDefault();
+                if (findAssetName != null)
+                {
+                    return Json("Asset already exist in location!");
+                }
+                else
+                {
+                    db.Assets.Add(asset);
+                    db.SaveChanges();
+                    return Json("Successfully created Asset!");
+                }
+                
             }
 
             return View(asset);
@@ -68,6 +79,40 @@ namespace Kazan_Session1_API_22_9.Controllers
                 return Json("Successfully edited Asset!");
             }
             return View(asset);
+        }
+
+        // POST: Assets/GetCustomView
+        [HttpPost]
+        public ActionResult GetCustomView()
+        {
+            var getAssets = (from x in db.Assets
+                             join y in db.DepartmentLocations on x.DepartmentLocationID equals y.ID
+                             join z in db.Departments on y.DepartmentID equals z.ID
+                             join a in db.AssetGroups on x.AssetGroupID equals a.ID
+                             select new
+                             {
+                                 AssetID = x.ID,
+                                 AssetName = x.AssetName,
+                                 AssetGroup = a.Name,
+                                 DepartmentName = z.Name,
+                                 AssetSN = x.AssetSN,
+                                 WarrantyDate = x.WarrantyDate
+                             });
+            return Json(getAssets.ToList());
+        }
+
+        // POST: Assets/GetAllSN
+        [HttpPost]
+        public ActionResult GetAllSN()
+        {
+            var getAllSN = new List<string>();
+            getAllSN = (from x in db.Assets
+                        select x.AssetSN).ToList();
+            getAllSN.AddRange((from x in db.AssetTransferLogs
+                               select x.FromAssetSN).ToList());
+            getAllSN.AddRange((from x in db.AssetTransferLogs
+                               select x.ToAssetSN).ToList());
+            return Json(getAllSN.Distinct());
         }
 
         protected override void Dispose(bool disposing)
